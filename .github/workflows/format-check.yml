@@ -2,7 +2,6 @@ name: Code Formatting Verification
 
 on:
   push:
-  pull_request:
 
 permissions:
   contents: write
