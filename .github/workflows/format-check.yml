@@ -1,0 +1,51 @@
+name: Code Formatting Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore HelloWorld/
+      
+    - name: Build
+      run: dotnet build HelloWorld/ --no-restore
+      
+    - name: Run tests (if any)
+      run: dotnet test HelloWorld/ --no-build --verbosity normal
+      continue-on-error: true
+      
+    - name: Check code formatting
+      run: |
+        echo "Checking code formatting with dotnet format..."
+        dotnet format HelloWorld/ --verify-no-changes --verbosity diagnostic
+        if [ $? -ne 0 ]; then
+          echo "❌ Code formatting issues found!"
+          echo "Please run 'dotnet format HelloWorld/' to fix formatting issues."
+          exit 1
+        else
+          echo "✅ Code formatting is correct!"
+        fi
+        
+    - name: Run Hello World application
+      run: |
+        echo "Testing the Hello World application..."
+        cd HelloWorld/
+        dotnet run
+        echo ""
+        echo "Testing with arguments..."
+        dotnet run -- test arg1 arg2
