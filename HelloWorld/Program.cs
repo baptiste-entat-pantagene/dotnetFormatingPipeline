@@ -6,16 +6,16 @@ class Program
 {
     static void Main(string[] args)
     {
-        Console.WriteLine("Hello, World!" );
+        Console.WriteLine("Hello, World!");
         Console.WriteLine("Bienvenue dans l'application Hello World en C#!");
 
-        if(args.Length > 0)
+        if (args.Length > 0)
         {
             Console.WriteLine($"Arguments reçus: {string.Join(", ", args)}");
         }
         else
         {
-        Console.WriteLine("Aucun argument fourni.");
+            Console.WriteLine("Aucun argument fourni.");
         }
     }
 }
