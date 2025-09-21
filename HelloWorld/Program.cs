@@ -15,7 +15,7 @@ class Program
         }
         else
         {
-        Console.WriteLine("Aucun argument fourni.");
+            Console.WriteLine("Aucun argument fourni.");
         }
     }
 }
