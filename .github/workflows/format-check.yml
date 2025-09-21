@@ -45,8 +45,12 @@ jobs:
         id: format-check
         run: |
           echo "Checking code formatting with dotnet format..."
+          set +e  # Disable exit on error for this command
           dotnet format ./HelloWorld --verify-no-changes --verbosity diagnostic
-          if [ $? -ne 0 ]; then
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          if [ $exit_code -ne 0 ]; then
             echo "❌ Code formatting issues found!"
             echo "needs-formatting=true" >> $GITHUB_OUTPUT
           else
