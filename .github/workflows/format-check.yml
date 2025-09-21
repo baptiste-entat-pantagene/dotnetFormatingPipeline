@@ -1,0 +1,128 @@
+name: Code Formatting Verification
+
+on:
+  push:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-check:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ./HelloWorld
+
+      - name: Build
+        run: dotnet build ./HelloWorld --no-restore
+
+  format-check:
+    runs-on: ubuntu-22.04
+    needs: [build-check]
+    outputs:
+      needs-formatting: ${{ steps.format-check.outputs.needs-formatting }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Check code formatting
+        id: format-check
+        run: |
+          echo "Checking code formatting with dotnet format..."
+          set +e  # Disable exit on error for this command
+          dotnet format ./HelloWorld --verify-no-changes --verbosity diagnostic
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          if [ $exit_code -ne 0 ]; then
+            echo "❌ Code formatting issues found!"
+            echo "needs-formatting=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Code formatting is correct!"
+            echo "needs-formatting=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail if formatting needed
+        if: steps.format-check.outputs.needs-formatting == 'true'
+        run: |
+          echo "Code formatting is required. Auto-format job will run if this is a push event."
+          exit 1
+
+  auto-format:
+    runs-on: ubuntu-22.04
+    needs: [format-check]
+    if: always() && needs.format-check.outputs.needs-formatting == 'true' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Apply code formatting
+        run: |
+          echo "Applying code formatting..."
+          dotnet format ./HelloWorld --verbosity diagnostic
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected after formatting"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes after formatting"
+          fi
+
+      - name: Create Pull Request
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "🔧 Fix code formatting issues"
+          title: "🔧 Auto-fix code formatting"
+          body: |
+            ## 🔧 Correction automatique du formatage de code
+
+            Ce PR a été créé automatiquement pour corriger les problèmes de formatage détectés dans le code.
+
+            ### Changements apportés
+            - Application de `dotnet format` pour corriger les problèmes de formatage
+            - Mise en conformité avec les standards de formatage du projet
+
+            ### Actions effectuées
+            - ✅ Vérification du formatage avec `dotnet format --verify-no-changes`
+            - ✅ Application des corrections avec `dotnet format`
+            - ✅ Création automatique de ce PR
+
+            Ce PR peut être mergé une fois que vous avez vérifié que les changements sont corrects.
+          branch: auto-format-${{ github.sha }}
+          delete-branch: true
