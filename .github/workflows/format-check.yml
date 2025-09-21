@@ -28,6 +28,7 @@ jobs:
 
   format-check:
     runs-on: ubuntu-22.04
+    needs: [build-check]
     outputs:
       needs-formatting: ${{ steps.format-check.outputs.needs-formatting }}
 
